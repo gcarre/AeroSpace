@@ -94,7 +94,7 @@ extension TreeNode {
                      .macosPopupWindowsContainer:
                     true
                 case .tilingContainer(let parent):
-                    (layout == nil || parent.layout == layout) &&
+                    (layout == nil || parent.layout == layout || (layout == .tiles && parent.layout == .dwindle)) &&
                         parent.orientation == direction.orientation &&
                         (node.ownIndex.map { parent.children.indices.contains($0 + direction.focusOffset) } ?? true)
             }

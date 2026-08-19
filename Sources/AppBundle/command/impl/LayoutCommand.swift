@@ -53,6 +53,8 @@ struct LayoutCommand: Command {
                 return changeTilingLayout(io, targetLayout: .accordion, targetOrientation: nil, node: node)
             case .tiles:
                 return changeTilingLayout(io, targetLayout: .tiles, targetOrientation: nil, node: node)
+            case .dwindle:
+                return changeTilingLayout(io, targetLayout: .dwindle, targetOrientation: nil, node: node)
             case .horizontal:
                 return changeTilingLayout(io, targetLayout: nil, targetOrientation: .h, node: node)
             case .vertical:
@@ -92,10 +94,22 @@ struct LayoutCommand: Command {
         case .floatingWindowsContainer:
             return .fail(io.err("The window is non-tiling"))
         case .tilingContainer(let parent):
-            let targetOrientation = targetOrientation ?? parent.orientation
-            let targetLayout = targetLayout ?? parent.layout
-            parent.layout = targetLayout
-            parent.changeOrientation(targetOrientation)
+            if targetLayout == .dwindle {
+                guard parent.enableDwindleLayout() else {
+                    return .fail(io.err("dwindle layout can only be enabled on a workspace root container; use 'layout --root dwindle'"))
+                }
+            } else {
+                if let targetLayout {
+                    if parent.isRootContainer && parent.layout == .dwindle {
+                        parent.disableDwindleLayout(to: targetLayout)
+                    } else {
+                        parent.layout = targetLayout
+                    }
+                }
+            }
+            if let targetOrientation {
+                parent.changeOrientation(targetOrientation)
+            }
             return .succ
     }
 }
@@ -104,6 +118,7 @@ extension ConventionalWindowParentCases {
     fileprivate func matchesDescription(_ layout: LayoutCmdArgs.LayoutDescription) -> Bool {
         return switch layout {
             case .accordion:   tilingContainerOrNil?.layout == .accordion
+            case .dwindle:     tilingContainerOrNil?.layout == .dwindle
             case .tiles:       tilingContainerOrNil?.layout == .tiles
             case .horizontal:  tilingContainerOrNil?.orientation == .h
             case .vertical:    tilingContainerOrNil?.orientation == .v

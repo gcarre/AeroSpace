@@ -56,8 +56,11 @@ extension TilingContainer {
 }
 
 enum Layout: String {
+    case dwindle
     case tiles
     case accordion
+
+    var isTilesLike: Bool { self == .tiles || self == .dwindle }
 }
 
 extension String {
