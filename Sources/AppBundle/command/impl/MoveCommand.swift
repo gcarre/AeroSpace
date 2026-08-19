@@ -135,9 +135,12 @@ private let moveOutMacosUnconventionalWindow = "moving macOS fullscreen, minimiz
     _ direction: CardinalDirection,
 ) {
     let prevRoot = workspace.rootTilingContainer
+    let rootLayout = prevRoot.layout
     prevRoot.unbindFromParent()
-    // Force tiles layout
-    _ = TilingContainer(parent: workspace, adaptiveWeight: WEIGHT_AUTO, direction.orientation, .tiles, index: 0)
+    if rootLayout == .dwindle {
+        prevRoot.layout = .tiles // Only the workspace root carries the dwindle marker
+    }
+    _ = TilingContainer(parent: workspace, adaptiveWeight: WEIGHT_AUTO, direction.orientation, rootLayout, index: 0)
     check(prevRoot != workspace.rootTilingContainer)
     prevRoot.bind(to: workspace.rootTilingContainer, adaptiveWeight: WEIGHT_AUTO, index: 0)
     window.bind(to: workspace.rootTilingContainer, adaptiveWeight: WEIGHT_AUTO, index: direction.insertionOffset)

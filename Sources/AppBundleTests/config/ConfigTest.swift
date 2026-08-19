@@ -578,6 +578,8 @@ final class ConfigTest: XCTestCase {
     }
 
     func testParseDefaultRootContainerLayout() {
+        assertEquals(parseConfig("").config.defaultRootContainerLayout, .dwindle)
+
         let result = parseConfig(
             """
             default-root-container-layout = 'accordion'
@@ -585,6 +587,14 @@ final class ConfigTest: XCTestCase {
         )
         assertEquals(result.errors, [])
         assertEquals(result.config.defaultRootContainerLayout, .accordion)
+
+        let dwindleResult = parseConfig(
+            """
+            default-root-container-layout = 'dwindle'
+            """,
+        )
+        assertEquals(dwindleResult.errors, [])
+        assertEquals(dwindleResult.config.defaultRootContainerLayout, .dwindle)
 
         let listResult = parseConfig(
             """

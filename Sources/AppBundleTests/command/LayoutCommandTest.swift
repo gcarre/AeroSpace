@@ -8,10 +8,16 @@ final class LayoutCommandTest: XCTestCase {
 
     func testParse() {
         assertNil(parseCommand("layout v_tiles h_tiles").errorOrNil)
+        assertNil(parseCommand("layout --root dwindle").errorOrNil)
         assertNil(parseCommand("layout tiling").errorOrNil)
         assertNil(parseCommand("layout floating tiling").errorOrNil)
         assertNil(parseCommand("layout --window-id 1 horizontal vertical").errorOrNil)
 
+        testParseCommandFail(
+            "layout dwindle",
+            msg: "layout command: dwindle requires using an explicit --root flag",
+            exitCode: 2,
+        )
         testParseCommandFail(
             "layout --root accordion tiling",
             msg: "layout command: --root and tiling|floating are incompatible",
