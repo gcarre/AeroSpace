@@ -3,7 +3,7 @@ extension Workspace {
         let root = rootTilingContainer
         root.unbindEmptyAndFlattenContainersRecursive()
         // rootTilingContainer.deriveAxLifeStatusRecursive()
-        if config.enableNormalizationOppositeOrientationForNestedContainers {
+        if config.enableNormalizationOppositeOrientationForNestedContainers && root.layout != .dwindle {
             root.normalizeOppositeOrientationForNestedContainersRecursive(parentOrientation: nil)
         }
     }
@@ -25,7 +25,9 @@ extension TilingContainer {
                     let data = grandChild.unbindFromParent()
                     grandChild.bind(to: self, adaptiveWeight: data.adaptiveWeight, index: INDEX_BIND_LAST)
                 }
+                let wasDwindle = layout == .dwindle
                 self.copyFrom(child)
+                if wasDwindle { layout = .dwindle }
             }
             for child in children {
                 (child as? TilingContainer)?.unbindEmptyAndFlattenContainersRecursive()

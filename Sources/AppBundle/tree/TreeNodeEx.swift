@@ -116,7 +116,7 @@ extension TreeNode {
                      .macosPopupWindowsContainer:
                     return nil
                 case .tilingContainer(let parent):
-                    if (layout == nil || parent.layout == layout) && parent.orientation == direction.orientation {
+                    if (layout == nil || parent.layout == layout || (layout == .tiles && parent.layout == .dwindle)) && parent.orientation == direction.orientation {
                         guard let ownIndex = node.ownIndex(in: .all) else { return nil }
                         if let neighborIndex = parent.inhabitedSiblingIndex(of: ownIndex, in: direction) {
                             return (parent, ownIndex, neighborIndex)

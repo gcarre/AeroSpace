@@ -9,7 +9,7 @@ struct ResizeCommand: Command {
         guard let target = args.resolveTargetOrReportError(env, io) else { return .fail }
 
         let candidates = target.windowOrNil?.parentsWithSelf
-            .filter { ($0.parent as? TilingContainer)?.layout == .tiles }
+            .filter { ($0.parent as? TilingContainer)?.layout.isTilesLike == true }
             .filter {
                 guard let parent = $0.parent as? TilingContainer else { return false }
                 return switch parent.lifeStatus {

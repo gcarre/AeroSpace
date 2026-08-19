@@ -236,21 +236,6 @@ private func unbindAndGetBindingDataForNewWindow(_ windowId: OpaqueWindowId, _ m
     }
 }
 
-// The function is private because it's unsafe. It leaves the window in unbound state
-@MainActor
-private func unbindAndGetBindingDataForNewTilingWindow(_ workspace: Workspace, window: Window?) -> BindingData {
-    window?.unbindFromParent() // It's important to unbind to get correct data from below
-    if let (tilingParent, index) = workspace.mostRecentWindowRecursive?.nearestAliveTilingParent() {
-        return BindingData(parent: tilingParent, adaptiveWeight: WEIGHT_AUTO, index: index + 1)
-    } else {
-        return BindingData(
-            parent: workspace.rootTilingContainer,
-            adaptiveWeight: WEIGHT_AUTO,
-            index: INDEX_BIND_LAST,
-        )
-    }
-}
-
 @MainActor
 func runOnWindowDetected(ifConventional window: Window) async {
     switch window.windowParentCases {
