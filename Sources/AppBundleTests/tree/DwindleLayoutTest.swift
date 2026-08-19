@@ -51,7 +51,8 @@ final class DwindleLayoutTest: XCTestCase {
             TestWindow.new(id: 3, parent: $0)
         }
 
-        let result = await parseCommand("layout --root dwindle").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        let result = await parseCommand("layout --root dwindle").cmdOrDie
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
 
         assertEquals(result.exitCode.rawValue, 0)
         assertEquals(
@@ -86,7 +87,8 @@ final class DwindleLayoutTest: XCTestCase {
         _ = newDwindleWindow(id: 2, in: workspace)
         _ = newDwindleWindow(id: 3, in: workspace)
 
-        let result = await parseCommand("layout --root tiles").cmdOrDie.run(.defaultEnv, .emptyStdin)
+        let result = await parseCommand("layout --root tiles").cmdOrDie
+            .run(.defaultEnv.withWorkspaceName(name), .emptyStdin)
 
         assertEquals(result.exitCode.rawValue, 0)
         assertEquals(
