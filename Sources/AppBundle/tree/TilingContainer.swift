@@ -56,6 +56,12 @@ extension TilingContainer {
         }
     }
 
+    // Dwindle toggles only the focused split, without flipping its ancestors.
+    @MainActor
+    func toggleDwindleSplitOrientation() {
+        _orientation = orientation.opposite
+    }
+
     func normalizeOppositeOrientationForNestedContainersRecursive(parentOrientation: Orientation?) {
         switch lifeStatus {
             case .deadOrInvisible: return
