@@ -45,6 +45,14 @@ extension TilingContainer {
         }
     }
 
+    /// Hyprland's dwindle `togglesplit` changes only the focused leaf's
+    /// immediate parent. It must not apply AeroSpace's ancestor-orientation
+    /// normalization, even when that normalization is enabled globally.
+    @MainActor
+    func toggleDwindleSplitOrientation() {
+        _orientation = orientation.opposite
+    }
+
     func normalizeOppositeOrientationForNestedContainers() {
         if orientation == (parent as? TilingContainer)?.orientation {
             _orientation = orientation.opposite
@@ -56,8 +64,11 @@ extension TilingContainer {
 }
 
 enum Layout: String {
+    case dwindle
     case tiles
     case accordion
+
+    var isTilesLike: Bool { self == .tiles || self == .dwindle }
 }
 
 extension String {
