@@ -33,6 +33,7 @@ public struct LayoutCmdArgs: CmdArgs {
     public enum LayoutDescription: String, CaseIterable, Equatable, Sendable, AeroAny {
         case accordion, dwindle, tiles
         case horizontal, vertical
+        case toggleSplit = "toggle-split"
         case h_accordion, v_accordion, h_tiles, v_tiles
         case tiling, floating
     }
@@ -42,7 +43,7 @@ public struct LayoutCmdArgs: CmdArgs {
     public var forNextDetectedWindow: Bool = false
 }
 
-public let layoutCommandRootFlagIncompatibilityMsg = "layout command: --root and tiling|floating are incompatible"
+public let layoutCommandRootFlagIncompatibilityMsg = "layout command: --root and tiling|floating|toggle-split are incompatible"
 public let layoutCommandForNextDetectedWindowFlagIncompatibilityMsg =
     "layout command: --for-next-detected-window allows only one tiling|floating <target-layout> argument"
 
@@ -75,7 +76,7 @@ func parseLayoutCmdArgs(_ args: StrArrSlice) -> ParsedCmd<LayoutCmdArgs> {
         .filter(layoutCommandRootFlagIncompatibilityMsg) { cmdArgs in
             !cmdArgs.root || cmdArgs.toggleBetween.val.allSatisfy {
                 switch $0 {
-                    case .floating, .tiling: false
+                    case .floating, .tiling, .toggleSplit: false
                     case .accordion, .dwindle, .h_accordion, .h_tiles,
                          .horizontal, .tiles, .v_accordion, .v_tiles,
                          .vertical: true
@@ -86,11 +87,14 @@ func parseLayoutCmdArgs(_ args: StrArrSlice) -> ParsedCmd<LayoutCmdArgs> {
             !cmdArgs.forNextDetectedWindow || true == cmdArgs.toggleBetween.val.singleOrNil()?.then {
                 switch $0 {
                     case .floating, .tiling: true
-                    case .accordion, .dwindle, .h_accordion, .h_tiles,
+                    case .accordion, .dwindle, .toggleSplit, .h_accordion, .h_tiles,
                          .horizontal, .tiles, .v_accordion, .v_tiles,
                          .vertical: false
                 }
             }
+        }
+        .filter("layout command: toggle-split cannot be combined with other target layouts") {
+            !$0.toggleBetween.val.contains(.toggleSplit) || $0.toggleBetween.val.count == 1
         }
         .filter("--workspace flag requires using an explicit --root flag") { ($0.workspaceName != nil).implies($0.root) }
         .filter("layout command: dwindle requires using an explicit --root flag") {

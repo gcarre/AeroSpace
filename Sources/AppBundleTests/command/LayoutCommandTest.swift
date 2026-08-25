@@ -11,6 +11,7 @@ final class LayoutCommandTest: XCTestCase {
         assertNil(parseCommand("layout --root dwindle").errorOrNil)
         assertNil(parseCommand("layout tiling").errorOrNil)
         assertNil(parseCommand("layout floating tiling").errorOrNil)
+        assertNil(parseCommand("layout toggle-split").errorOrNil)
         assertNil(parseCommand("layout --window-id 1 horizontal vertical").errorOrNil)
 
         testParseCommandFail(
@@ -20,7 +21,17 @@ final class LayoutCommandTest: XCTestCase {
         )
         testParseCommandFail(
             "layout --root accordion tiling",
-            msg: "layout command: --root and tiling|floating are incompatible",
+            msg: "layout command: --root and tiling|floating|toggle-split are incompatible",
+            exitCode: 2,
+        )
+        testParseCommandFail(
+            "layout --root toggle-split",
+            msg: "layout command: --root and tiling|floating|toggle-split are incompatible",
+            exitCode: 2,
+        )
+        testParseCommandFail(
+            "layout toggle-split tiles",
+            msg: "layout command: toggle-split cannot be combined with other target layouts",
             exitCode: 2,
         )
         testParseSingleCommandSucc(
