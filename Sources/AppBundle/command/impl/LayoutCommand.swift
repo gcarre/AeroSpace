@@ -59,6 +59,8 @@ struct LayoutCommand: Command {
                 return changeTilingLayout(io, targetLayout: nil, targetOrientation: .h, node: node)
             case .vertical:
                 return changeTilingLayout(io, targetLayout: nil, targetOrientation: .v, node: node)
+            case .toggleSplit:
+                return toggleDwindleSplit(io, target: target)
             case .tiling:
                 guard let window = target.windowOrNil else { return .fail(io.err(noWindowIsFocused)) }
                 switch node {
@@ -82,6 +84,21 @@ struct LayoutCommand: Command {
                 return .succ
         }
     }
+}
+
+@MainActor private func toggleDwindleSplit(_ io: CmdIo, target: LiveFocus) -> BinaryExitCode {
+    guard let window = target.windowOrNil else {
+        return .fail(io.err(noWindowIsFocused))
+    }
+    guard target.workspace.rootTilingContainer.layout == .dwindle else {
+        return .fail(io.err("toggle-split is only available in dwindle layout"))
+    }
+    guard case .tilingContainer(let parent) = window.windowParentCases, parent.children.count > 1 else {
+        return .fail(io.err("The focused window has no dwindle split to toggle"))
+    }
+
+    parent.toggleDwindleSplitOrientation()
+    return .succ
 }
 
 @MainActor private func changeTilingLayout(
@@ -122,6 +139,7 @@ extension ConventionalWindowParentCases {
             case .tiles:       tilingContainerOrNil?.layout == .tiles
             case .horizontal:  tilingContainerOrNil?.orientation == .h
             case .vertical:    tilingContainerOrNil?.orientation == .v
+            case .toggleSplit: false
             case .h_accordion: tilingContainerOrNil.map { $0.layout == .accordion && $0.orientation == .h } == true
             case .v_accordion: tilingContainerOrNil.map { $0.layout == .accordion && $0.orientation == .v } == true
             case .h_tiles:     tilingContainerOrNil.map { $0.layout == .tiles && $0.orientation == .h } == true

@@ -123,6 +123,66 @@ final class DwindleLayoutTest: XCTestCase {
         )
     }
 
+    func testToggleSplitChangesOnlyFocusedWindowsImmediateParent() async {
+        config.enableNormalizationOppositeOrientationForNestedContainers = true
+        let workspace = Workspace.get(byName: name)
+        _ = newDwindleWindow(id: 1, in: workspace)
+        _ = newDwindleWindow(id: 2, in: workspace)
+        let window3 = newDwindleWindow(id: 3, in: workspace)
+        _ = newDwindleWindow(id: 4, in: workspace)
+        assertTrue(window3.focusWindow())
+
+        let result = await parseCommand("layout toggle-split").cmdOrDie.run(.defaultEnv, .emptyStdin)
+
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(
+            workspace.rootTilingContainer.layoutDescription,
+            .dwindle([
+                .window(1),
+                .v_tiles([
+                    .window(2),
+                    .v_tiles([.window(3), .window(4)]),
+                ]),
+            ]),
+        )
+    }
+
+    func testToggleSplitChangesRootSplit() async {
+        let workspace = Workspace.get(byName: name)
+        let window1 = newDwindleWindow(id: 1, in: workspace)
+        _ = newDwindleWindow(id: 2, in: workspace)
+        assertTrue(window1.focusWindow())
+
+        let result = await parseCommand("layout toggle-split").cmdOrDie.run(.defaultEnv, .emptyStdin)
+
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(workspace.rootTilingContainer.orientation, .v)
+        assertEquals(workspace.rootTilingContainer.layout, .dwindle)
+    }
+
+    func testToggleSplitFailsWithoutSplit() async {
+        let workspace = Workspace.get(byName: name)
+        let window = newDwindleWindow(id: 1, in: workspace)
+        assertTrue(window.focusWindow())
+
+        let result = await parseCommand("layout toggle-split").cmdOrDie.run(.defaultEnv, .emptyStdin)
+
+        assertEquals(result.exitCode.rawValue, 2)
+        assertEquals(result.stderr, ["The focused window has no dwindle split to toggle"])
+    }
+
+    func testToggleSplitFailsOutsideDwindle() async {
+        config.defaultRootContainerLayout = .tiles
+        let workspace = Workspace.get(byName: name)
+        let window = TestWindow.new(id: 1, parent: workspace.rootTilingContainer)
+        assertTrue(window.focusWindow())
+
+        let result = await parseCommand("layout toggle-split").cmdOrDie.run(.defaultEnv, .emptyStdin)
+
+        assertEquals(result.exitCode.rawValue, 2)
+        assertEquals(result.stderr, ["toggle-split is only available in dwindle layout"])
+    }
+
     private func newDwindleWindow(id: UInt32, in workspace: Workspace) -> TestWindow {
         let data = unbindAndGetBindingDataForNewTilingWindow(workspace, window: nil)
         return TestWindow.new(id: id, parent: data.parent, adaptiveWeight: data.adaptiveWeight)

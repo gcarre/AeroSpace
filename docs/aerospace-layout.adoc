@@ -34,7 +34,7 @@ include::./util/workspace-flag-desc.adoc[]
 
 --root::
 Instead of the focused window, change the layout of the workspace tiling root node.
-When you use this flag, `tiling` and `floating` become invalid values for `<target-layout>`.
+When you use this flag, `tiling`, `floating`, and `toggle-split` become invalid values for `<target-layout>`.
 
 --fail-if-noop::
 Exit with non-zero exit code if already in the requested layout.
@@ -49,6 +49,7 @@ Possible values:
 * `h_tiles|v_tiles|h_accordion|v_accordion` - Change both tiling layout and orientation in one go
 * `tiles|accordion` - Change tiling layout but preserve orientation
 * `dwindle` - Recursively split the focused window. Dwindle can only be enabled on the workspace root node with `--root`
+* `toggle-split` - In Dwindle, toggle the focused window's immediate split between side-by-side and top-and-bottom
 * `horizontal|vertical` - Change orientation but preserve layout
 * `tiling|floating` - Toggle between floating/tiling mode
 +
@@ -68,6 +69,9 @@ include::./util/conditional-examples-header.adoc[]
 
 * Switch the workspace to dwindle layout: +
 `aerospace layout --root dwindle`
+
+* Toggle the focused Dwindle split (equivalent to Hyprland's `togglesplit`): +
+`aerospace layout toggle-split`
 
 * Switch to `tiles` layout. Toggle the layout orientation if already in `tiles` layout: +
 `aerospace layout tiles horizontal vertical`
