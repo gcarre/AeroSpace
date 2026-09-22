@@ -24,6 +24,7 @@ final class Monitor: TreeNode, NonLeafTreeNodeObject {
 }
 
 @MainActor private func rearrangeMonitors() {
+    guard !globalUnsortedMonitorInfos.isEmpty else { return }
     var newMonitorPoints = globalUnsortedMonitorInfos.grouped(by: { $0.rect.topLeftCorner }).mapValues { $0.singleOrNil().orDie() }
 
     var oldPointToMonitor = pointToMonitor
@@ -97,9 +98,9 @@ extension MonitorInfo {
             return existing
         }
         rearrangeMonitors() // If monitor configuration changed
-        // Normally, recursion should happen only once more because we must take the value from the cache
-        // (Unless, monitor configuration data race happens)
-        return self.toMonitorOrRearrangeMonitors()
+        // A stale NSScreen snapshot may no longer have an exact match after rearranging.
+        return pointToMonitor[rect.topLeftCorner]
+            ?? pointToMonitor.minBy { ($0.key - rect.topLeftCorner).vectorLength }.orDie().value
     }
 
     @MainActor func setVisibleWorkspace(_ workspace: Workspace) -> Bool { // todo revisit this API (new name: setVisibleWorkspace)

@@ -61,23 +61,52 @@ private func moveTilingWindow(_ window: Window) {
         .findWindowRecursively(in: targetWorkspace.rootTilingContainer, virtual: false, fullscreenCoversAll: false)?
         .takeIf { $0 != window }
     if targetWorkspace != window.nodeWorkspace { // Move window to a different monitor
+        moveTilingWindowToWorkspace(window, targetWorkspace, mouseLocation, swapTarget)
+    } else if let swapTarget {
+        swapWindows(mruDominant: window, swapTarget)
+    }
+}
+
+@MainActor
+func moveTilingWindowToWorkspace(
+    _ window: Window,
+    _ targetWorkspace: Workspace,
+    _ dropPoint: Point,
+    _ windowUnderPointer: Window? = nil,
+) {
+    if targetWorkspace.rootTilingContainer.layout == .dwindle {
+        let dropTarget = windowUnderPointer ?? targetWorkspace.rootTilingContainer.allLeafWindowsRecursive
+            .filter { $0 != window }
+            .compactMap { candidate -> (window: Window, distance: CGFloat)? in
+                guard let rect = candidate.lastAppliedLayoutPhysicalRect else { return nil }
+                return (candidate, dropPoint.distance(toOuterFrame: rect))
+            }
+            .minBy { $0.distance }?
+            .window
+        let data = unbindAndGetBindingDataForDwindleDrop(
+            targetWorkspace,
+            window: window,
+            targetWindow: dropTarget,
+            dropPoint: dropPoint,
+        )
+        window.bind(to: data.parent, adaptiveWeight: data.adaptiveWeight, index: data.index)
+    } else {
+        let swapTarget = windowUnderPointer
         let parent: TilingContainer
         let index: Int
         if let swapTarget,
-           let (_parent, _index) = swapTarget.nearestAliveTilingParent(),
+           let (targetParent, targetIndex) = swapTarget.nearestAliveTilingParent(),
            let targetRect = swapTarget.lastAppliedLayoutPhysicalRect
         {
-            parent = _parent
-            index = mouseLocation.getProjection(_parent.orientation) >= targetRect.center.getProjection(_parent.orientation)
-                ? _index + 1
-                : _index
+            parent = targetParent
+            index = dropPoint.getProjection(parent.orientation) >= targetRect.center.getProjection(parent.orientation)
+                ? targetIndex + 1
+                : targetIndex
         } else {
             parent = targetWorkspace.rootTilingContainer
             index = 0
         }
         window.bind(to: parent, adaptiveWeight: WEIGHT_AUTO, index: index)
-    } else if let swapTarget {
-        swapWindows(mruDominant: window, swapTarget)
     }
 }
 
