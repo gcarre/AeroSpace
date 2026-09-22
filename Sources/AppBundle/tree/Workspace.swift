@@ -116,14 +116,25 @@ extension Workspace {
 extension MonitorInfo {
     @MainActor
     var activeWorkspace: Workspace {
-        if let existing = screenPointToVisibleWorkspace[rect.topLeftCorner] {
+        let monitorPoint = rect.topLeftCorner
+        if let existing = screenPointToVisibleWorkspace[monitorPoint] {
             return existing
         }
         // What if monitor configuration changed? (frame.origin is changed)
         rearrangeWorkspacesOnMonitors()
-        // Normally, recursion should happen only once more because we must take the value from the cache
-        // (Unless, monitor configuration data race happens)
-        return self.activeWorkspace
+        if let existing = screenPointToVisibleWorkspace[monitorPoint] {
+            return existing
+        }
+
+        // NSScreen can change between the snapshot that produced `self` and
+        // the snapshot used by rearrangeWorkspacesOnMonitors(). In that case,
+        // `monitorPoint` is stale and retrying recursively can never populate
+        // its cache entry. Use the nearest workspace from the current monitor
+        // snapshot instead.
+        return screenPointToVisibleWorkspace
+            .minBy { ($0.key - monitorPoint).vectorLength }?
+            .value
+            ?? focus.workspace
     }
 
     @MainActor
@@ -165,6 +176,8 @@ extension CGPoint {
 @MainActor
 private func rearrangeWorkspacesOnMonitors() {
     let newScreens = monitorInfos.map(\.rect.topLeftCorner)
+    guard !newScreens.isEmpty else { return }
+
     var newScreenToOldScreenMapping: [CGPoint: CGPoint] = [:]
     for (oldScreen, _) in screenPointToVisibleWorkspace {
         guard let newScreen = newScreens.minBy({ ($0 - oldScreen).vectorLength }) else { continue }
