@@ -32,9 +32,62 @@ func unbindAndGetBindingDataForNewTilingWindow(
         return BindingData(parent: root, adaptiveWeight: WEIGHT_AUTO, index: index)
     }
 
-    let newWindowGoesFirst = index == 0
     let orientation = preferredDwindleOrientation(for: mruWindow, in: workspace)
 
+    return bindingDataBySplittingDwindleTarget(
+        root: root,
+        targetWindow: mruWindow,
+        tilingParent: tilingParent,
+        orientation: orientation,
+        newWindowGoesFirst: index == 0,
+    )
+}
+
+/// Hyprland-style Dwindle insertion for a tiled window dropped with the mouse.
+/// The window under the pointer is split, and the pointer's position determines
+/// which side receives the dropped window.
+@MainActor
+func unbindAndGetBindingDataForDwindleDrop(
+    _ workspace: Workspace,
+    window: Window,
+    targetWindow: Window?,
+    dropPoint: CGPoint,
+) -> BindingData {
+    if window.isBound {
+        window.unbindFromParent()
+    }
+
+    let root = workspace.rootTilingContainer
+    guard root.layout == .dwindle,
+          let targetWindow,
+          targetWindow != window,
+          targetWindow.nodeWorkspace == workspace,
+          let tilingParent = targetWindow.parent as? TilingContainer
+    else {
+        return BindingData(parent: root, adaptiveWeight: WEIGHT_AUTO, index: INDEX_BIND_LAST)
+    }
+
+    let targetRect = preferredDwindleRect(for: targetWindow, in: workspace)
+    let orientation: Orientation = targetRect.width > targetRect.height ? .h : .v
+    let newWindowGoesFirst = dropPoint.getProjection(orientation) < targetRect.center.getProjection(orientation)
+
+    return bindingDataBySplittingDwindleTarget(
+        root: root,
+        targetWindow: targetWindow,
+        tilingParent: tilingParent,
+        orientation: orientation,
+        newWindowGoesFirst: newWindowGoesFirst,
+    )
+}
+
+@MainActor
+private func bindingDataBySplittingDwindleTarget(
+    root: TilingContainer,
+    targetWindow: Window,
+    tilingParent: TilingContainer,
+    orientation: Orientation,
+    newWindowGoesFirst: Bool,
+) -> BindingData {
     // Avoid an unnecessary wrapper for the first split. Keeping the marker on
     // the root also lets subsequent insertions identify the workspace layout.
     if tilingParent === root && root.children.count == 1 {
@@ -46,7 +99,7 @@ func unbindAndGetBindingDataForNewTilingWindow(
         )
     }
 
-    let previousBinding = mruWindow.unbindFromParent()
+    let previousBinding = targetWindow.unbindFromParent()
     let split = TilingContainer(
         parent: previousBinding.parent,
         adaptiveWeight: previousBinding.adaptiveWeight,
@@ -54,7 +107,7 @@ func unbindAndGetBindingDataForNewTilingWindow(
         .tiles,
         index: previousBinding.index,
     )
-    mruWindow.bind(
+    targetWindow.bind(
         to: split,
         adaptiveWeight: WEIGHT_AUTO,
         index: newWindowGoesFirst ? INDEX_BIND_LAST : 0,
@@ -86,6 +139,14 @@ private func preferredDwindleOrientation(for window: Window, in workspace: Works
 
     let rect = parent.lastAppliedLayoutVirtualRect ?? workspace.workspaceMonitor.visibleRectPaddedByOuterGaps
     return rect.width > rect.height ? .h : .v
+}
+
+@MainActor
+private func preferredDwindleRect(for window: Window, in workspace: Workspace) -> Rect {
+    window.lastAppliedLayoutVirtualRect
+        ?? window.lastAppliedLayoutPhysicalRect
+        ?? (window.parent as? TilingContainer)?.lastAppliedLayoutVirtualRect
+        ?? workspace.workspaceMonitor.visibleRectPaddedByOuterGaps
 }
 
 extension TilingContainer {

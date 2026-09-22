@@ -123,6 +123,54 @@ final class DwindleLayoutTest: XCTestCase {
         )
     }
 
+    func testMouseMoveToWorkspaceSplitsWindowUnderPointer() {
+        let targetWorkspace = Workspace.get(byName: "target")
+        _ = newDwindleWindow(id: 1, in: targetWorkspace)
+        let targetWindow = newDwindleWindow(id: 2, in: targetWorkspace)
+        targetWindow.lastAppliedLayoutVirtualRect = Rect(topLeftX: 1000, topLeftY: 0, width: 1000, height: 500)
+        targetWindow.lastAppliedLayoutPhysicalRect = targetWindow.lastAppliedLayoutVirtualRect
+
+        let sourceWorkspace = Workspace.get(byName: "source")
+        let movedWindow = TestWindow.new(id: 3, parent: sourceWorkspace.rootTilingContainer)
+        moveTilingWindowToWorkspace(
+            movedWindow,
+            targetWorkspace,
+            CGPoint(x: 1100, y: 250),
+            targetWindow,
+        )
+
+        assertTrue(sourceWorkspace.isEffectivelyEmpty)
+        assertEquals(
+            targetWorkspace.rootTilingContainer.layoutDescription,
+            .dwindle([
+                .window(1),
+                .h_tiles([.window(3), .window(2)]),
+            ]),
+        )
+    }
+
+    func testMouseMoveToWorkspaceUsesClosestWindowWhenDroppedInGap() {
+        let targetWorkspace = Workspace.get(byName: "target")
+        let window1 = newDwindleWindow(id: 1, in: targetWorkspace)
+        let window2 = newDwindleWindow(id: 2, in: targetWorkspace)
+        window1.lastAppliedLayoutVirtualRect = Rect(topLeftX: 0, topLeftY: 0, width: 490, height: 1000)
+        window1.lastAppliedLayoutPhysicalRect = window1.lastAppliedLayoutVirtualRect
+        window2.lastAppliedLayoutVirtualRect = Rect(topLeftX: 510, topLeftY: 0, width: 490, height: 1000)
+        window2.lastAppliedLayoutPhysicalRect = window2.lastAppliedLayoutVirtualRect
+
+        let sourceWorkspace = Workspace.get(byName: "source")
+        let movedWindow = TestWindow.new(id: 3, parent: sourceWorkspace.rootTilingContainer)
+        moveTilingWindowToWorkspace(movedWindow, targetWorkspace, CGPoint(x: 505, y: 750))
+
+        assertEquals(
+            targetWorkspace.rootTilingContainer.layoutDescription,
+            .dwindle([
+                .window(1),
+                .v_tiles([.window(2), .window(3)]),
+            ]),
+        )
+    }
+
     func testToggleSplitChangesOnlyFocusedWindowsImmediateParent() async {
         config.enableNormalizationOppositeOrientationForNestedContainers = true
         let workspace = Workspace.get(byName: name)

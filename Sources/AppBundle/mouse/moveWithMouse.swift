@@ -56,8 +56,39 @@ private func moveTilingWindow(_ window: Window) {
         .findWindowRecursively(in: targetWorkspace.rootTilingContainer, virtual: false, fullscreenCoversAll: false)?
         .takeIf { $0 != window }
     if targetWorkspace != window.nodeWorkspace { // Move window to a different monitor
+        moveTilingWindowToWorkspace(window, targetWorkspace, mouseLocation, swapTarget)
+    } else if let swapTarget {
+        swapWindows(mruDominant: window, swapTarget)
+    }
+}
+
+@MainActor
+func moveTilingWindowToWorkspace(
+    _ window: Window,
+    _ targetWorkspace: Workspace,
+    _ dropPoint: CGPoint,
+    _ windowUnderPointer: Window? = nil,
+) {
+    if targetWorkspace.rootTilingContainer.layout == .dwindle {
+        let dropTarget = windowUnderPointer ?? targetWorkspace.rootTilingContainer.allLeafWindowsRecursive
+            .filter { $0 != window }
+            .compactMap { candidate -> (window: Window, distance: CGFloat)? in
+                guard let rect = candidate.lastAppliedLayoutPhysicalRect else { return nil }
+                return (candidate, dropPoint.distance(toOuterFrame: rect))
+            }
+            .minBy { $0.distance }?
+            .window
+        let data = unbindAndGetBindingDataForDwindleDrop(
+            targetWorkspace,
+            window: window,
+            targetWindow: dropTarget,
+            dropPoint: dropPoint,
+        )
+        window.bind(to: data.parent, adaptiveWeight: data.adaptiveWeight, index: data.index)
+    } else {
+        let swapTarget = windowUnderPointer
         let index: Int = if let swapTarget, let parent = swapTarget.parent as? TilingContainer, let targetRect = swapTarget.lastAppliedLayoutPhysicalRect {
-            mouseLocation.getProjection(parent.orientation) >= targetRect.center.getProjection(parent.orientation)
+            dropPoint.getProjection(parent.orientation) >= targetRect.center.getProjection(parent.orientation)
                 ? swapTarget.ownIndex.orDie() + 1
                 : swapTarget.ownIndex.orDie()
         } else {
@@ -68,8 +99,6 @@ private func moveTilingWindow(_ window: Window) {
             adaptiveWeight: WEIGHT_AUTO,
             index: index,
         )
-    } else if let swapTarget {
-        swapWindows(mruDominant: window, swapTarget)
     }
 }
 
