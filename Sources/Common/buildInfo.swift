@@ -7,6 +7,6 @@ private let buildInfo: [String] = {
     return unsafe String(decoding: UnsafeBufferPointer(start: data, count: Int(size)), as: UTF8.self).split(separator: "\n").map(String.init)
 }()
 
-public let aeroSpaceAppVersion = buildInfo.getOrNil(atIndex: 0) ?? "0.0.0-SNAPSHOT"
+public let aeroSpaceAppVersion = buildInfo.getOrNil(atIndex: 0) ?? "0.21.3-Gcarre"
 public let gitHash = buildInfo.getOrNil(atIndex: 1) ?? "SNAPSHOT"
 public let gitShortHash = buildInfo.getOrNil(atIndex: 2) ?? "SNAPSHOT"
