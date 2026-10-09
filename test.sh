@@ -7,8 +7,8 @@ source ./script/setup.sh
 
 ./.debug/aerospace -h > /dev/null
 ./.debug/aerospace --help > /dev/null
-./.debug/aerospace -v | grep -q "0.0.0-SNAPSHOT SNAPSHOT"
-./.debug/aerospace --version | grep -q "0.0.0-SNAPSHOT SNAPSHOT"
+./.debug/aerospace -v | grep -q "0.21.3-Gcarre SNAPSHOT"
+./.debug/aerospace --version | grep -q "0.21.3-Gcarre SNAPSHOT"
 
 ./lint.sh
 ./generate.sh
