@@ -37,9 +37,13 @@ func moveWindowToWorkspace(_ window: Window, _ targetWorkspace: Workspace, _ io:
                 .succ(io.err("Window '\(window.windowId)' already belongs to workspace '\(targetWorkspace.name)'. Tip: use --fail-if-noop to exit with non-zero code"))
         }
     }
-    let targetContainer: NonLeafTreeNodeObject = window.isFloating
-        ? targetWorkspace.floatingWindowsContainer
-        : targetWorkspace.rootTilingContainer
-    window.bind(to: targetContainer, adaptiveWeight: WEIGHT_AUTO, index: index)
+    if window.isFloating {
+        window.bind(to: targetWorkspace.floatingWindowsContainer, adaptiveWeight: WEIGHT_AUTO, index: index)
+    } else if targetWorkspace.rootTilingContainer.layout == .dwindle {
+        let data = unbindAndGetBindingDataForNewTilingWindow(targetWorkspace, window: window, index: index)
+        window.bind(to: data.parent, adaptiveWeight: data.adaptiveWeight, index: data.index)
+    } else {
+        window.bind(to: targetWorkspace.rootTilingContainer, adaptiveWeight: WEIGHT_AUTO, index: index)
+    }
     return .from(bool: focusFollowsWindow ? window.focusWindow() : true)
 }

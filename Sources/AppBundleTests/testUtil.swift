@@ -20,6 +20,7 @@ func setUpWorkspacesForTests() {
     config.enableNormalizationFlattenContainers = false // Make layout tests more predictable
     config.enableNormalizationOppositeOrientationForNestedContainers = false // Make layout tests more predictable
     config.defaultRootContainerOrientation = .horizontal // Make default layout predictable
+    config.defaultRootContainerLayout = .tiles // Existing tests exercise the traditional flat tree unless opted into dwindle
 
     // Don't create any bindings and workspaces for tests
     config.modes = [mainModeId: Mode(bindings: [:])]
@@ -38,6 +39,8 @@ func setUpWorkspacesForTests() {
 
     TestApp.shared.focusedWindow = nil
     TestApp.shared.windows = []
+
+    global_layoutForNextDetectedWindow = nil
 }
 
 extension ParsedCmd {

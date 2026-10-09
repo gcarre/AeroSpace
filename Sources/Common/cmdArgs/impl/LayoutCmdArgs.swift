@@ -9,10 +9,17 @@ public struct LayoutCmdArgs: CmdArgs {
             "--workspace": workspaceSubArgParser(),
             "--root": trueBoolFlag(\.root),
             "--fail-if-noop": trueBoolFlag(\.failIfNoop),
+            "--for-next-detected-window": trueBoolFlag(\.forNextDetectedWindow),
         ],
         posArgs: [newMandatoryPosArgParser(\.toggleBetween, parseToggleBetween, placeholder: LayoutDescription.unionLiteral)],
         conflictingOptions: [
             ["--window-id", "--workspace"],
+
+            // todo introduce a flagsAllowlist primitive
+            ["--for-next-detected-window", "--window-id"],
+            ["--for-next-detected-window", "--workspace"],
+            ["--for-next-detected-window", "--root"],
+            ["--for-next-detected-window", "--fail-if-noop"],
         ],
     )
 
@@ -23,18 +30,22 @@ public struct LayoutCmdArgs: CmdArgs {
         self.toggleBetween = .initialized(toggleBetween)
     }
 
-    public enum LayoutDescription: String, CaseIterable, Equatable, Sendable {
-        case accordion, tiles
+    public enum LayoutDescription: String, CaseIterable, Equatable, Sendable, AeroAny {
+        case accordion, dwindle, tiles
         case horizontal, vertical
+        case toggleSplit = "toggle-split"
         case h_accordion, v_accordion, h_tiles, v_tiles
         case tiling, floating
     }
 
     public var root: Bool = false
     public var failIfNoop: Bool = false
+    public var forNextDetectedWindow: Bool = false
 }
 
-public let layoutCommandRootFlagIncompatibilityMsg = "layout command: --root and tiling|floating are incompatible"
+public let layoutCommandRootFlagIncompatibilityMsg = "layout command: --root and tiling|floating|toggle-split are incompatible"
+public let layoutCommandForNextDetectedWindowFlagIncompatibilityMsg =
+    "layout command: --for-next-detected-window allows only one tiling|floating <target-layout> argument"
 
 private func parseToggleBetween(input: PosArgParserInput) -> ParsedCliArgs<[LayoutCmdArgs.LayoutDescription]> {
     let args = input.nonFlagArgs()
@@ -65,14 +76,30 @@ func parseLayoutCmdArgs(_ args: StrArrSlice) -> ParsedCmd<LayoutCmdArgs> {
         .filter(layoutCommandRootFlagIncompatibilityMsg) { cmdArgs in
             !cmdArgs.root || cmdArgs.toggleBetween.val.allSatisfy {
                 switch $0 {
-                    case .floating, .tiling: false
-                    case .accordion, .h_accordion, .h_tiles,
+                    case .floating, .tiling, .toggleSplit: false
+                    case .accordion, .dwindle, .h_accordion, .h_tiles,
                          .horizontal, .tiles, .v_accordion, .v_tiles,
                          .vertical: true
                 }
             }
         }
+        .filter(layoutCommandForNextDetectedWindowFlagIncompatibilityMsg) { cmdArgs in
+            !cmdArgs.forNextDetectedWindow || true == cmdArgs.toggleBetween.val.singleOrNil()?.then {
+                switch $0 {
+                    case .floating, .tiling: true
+                    case .accordion, .dwindle, .toggleSplit, .h_accordion, .h_tiles,
+                         .horizontal, .tiles, .v_accordion, .v_tiles,
+                         .vertical: false
+                }
+            }
+        }
+        .filter("layout command: toggle-split cannot be combined with other target layouts") {
+            !$0.toggleBetween.val.contains(.toggleSplit) || $0.toggleBetween.val.count == 1
+        }
         .filter("--workspace flag requires using an explicit --root flag") { ($0.workspaceName != nil).implies($0.root) }
+        .filter("layout command: dwindle requires using an explicit --root flag") {
+            !$0.toggleBetween.val.contains(.dwindle) || $0.root
+        }
         .filter("--fail-if-noop allows only one <target-layout> argument") { $0.failIfNoop.implies($0.toggleBetween.val.count == 1) }
 }
 

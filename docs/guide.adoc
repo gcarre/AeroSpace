@@ -296,7 +296,7 @@ WARNING: i3 has a different terminology.
 * Each container can contain arbitrary number of children nodes
 * Windows are the only possible leaf nodes. Windows contain zero children nodes
 * Every container has two properties:
-. <<layouts,Layout>> (Possible values: `tiles`, `accordion`)
+. <<layouts,Layout>> (Possible values: `tiles`, `accordion`; the workspace root additionally supports `dwindle`)
 . Orientation (Possible values: `horizontal`, `vertical`)
 
 When we say "layout of the window", we refer to the layout of the window’s parent container.
@@ -323,7 +323,12 @@ The tree structure can be changed with three commands:
 [#layouts]
 === Layouts
 
-In total, AeroSpace provides 4 possible layouts:
+By default, AeroSpace uses the `dwindle` layout. Each new tiled window splits
+the focused window into two. Wide regions split left/right, while tall regions
+split top/bottom. Repeating this process produces a binary spiral similar to
+Hyprland's Dwindle layout.
+
+AeroSpace also provides 4 container layouts:
 
 - `h_tiles` horizontal tiles (in i3, it’s called "horizontal split")
 - `v_tiles` vertical tiles (in i3, it’s called "vertical split")
