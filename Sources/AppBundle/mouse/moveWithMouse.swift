@@ -75,7 +75,7 @@ func moveTilingWindowToWorkspace(
     _ windowUnderPointer: Window? = nil,
 ) {
     if targetWorkspace.rootTilingContainer.layout == .dwindle {
-        let dropTarget = windowUnderPointer ?? targetWorkspace.rootTilingContainer.allLeafWindowsRecursive
+        let dropTarget = windowUnderPointer ?? targetWorkspace.rootTilingContainer.allInhabitedLeafWindowsRecursive
             .filter { $0 != window }
             .compactMap { candidate -> (window: Window, distance: CGFloat)? in
                 guard let rect = candidate.lastAppliedLayoutPhysicalRect else { return nil }

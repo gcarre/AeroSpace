@@ -25,9 +25,11 @@ extension TilingContainer {
                     let data = grandChild.unbindFromParent()
                     grandChild.bind(to: self, adaptiveWeight: data.adaptiveWeight, index: INDEX_BIND_LAST)
                 }
-                let wasDwindle = layout == .dwindle
-                self.copyFrom(child)
-                if wasDwindle { layout = .dwindle }
+                if layout == .dwindle {
+                    changeOrientation(child.orientation)
+                } else {
+                    self.copyFrom(child)
+                }
             }
             for child in children {
                 (child as? TilingContainer)?.unbindEmptyAndFlattenContainersRecursive()

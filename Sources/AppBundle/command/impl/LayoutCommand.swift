@@ -104,7 +104,7 @@ struct LayoutCommand: Command {
     guard target.workspace.rootTilingContainer.layout == .dwindle else {
         return .fail(io.err("toggle-split is only available in dwindle layout"))
     }
-    guard case .tilingContainer(let parent) = window.windowParentCases, parent.children.count > 1 else {
+    guard let (parent, _) = window.nearestAliveTilingParent(), parent.inhabitedChildren.count > 1 else {
         return .fail(io.err("The focused window has no dwindle split to toggle"))
     }
 

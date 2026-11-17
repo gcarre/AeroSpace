@@ -1,12 +1,7 @@
 import AppKit
 import Common
 
-/// Returns where a new tiling window should be bound. In dwindle layout, the
-/// focused leaf is replaced with a binary split. Other layouts retain the
-/// traditional AeroSpace behavior of inserting next to the focused window.
-///
-/// This function is unsafe by design: when `window` is non-nil, it leaves the
-/// window unbound so the caller can bind it using the returned data.
+// Leaves `window` unbound so the caller can insert it at the returned split.
 @MainActor
 func unbindAndGetBindingDataForNewTilingWindow(
     _ workspace: Workspace,
@@ -19,14 +14,14 @@ func unbindAndGetBindingDataForNewTilingWindow(
 
     let root = workspace.rootTilingContainer
     let mruWindow = root.layout == .dwindle
-        ? root.mostRecentWindowRecursive
+        ? root.mostRecentDwindleWindow
         : workspace.mostRecentWindowRecursive
-    guard root.layout == .dwindle, let mruWindow, let tilingParent = mruWindow.parent as? TilingContainer else {
-        if let mruWindow, let tilingParent = mruWindow.parent as? TilingContainer {
+    guard root.layout == .dwindle, let mruWindow, let (tilingParent, targetIndex) = mruWindow.nearestAliveTilingParent() else {
+        if let (tilingParent, mruIndex) = mruWindow?.nearestAliveTilingParent() {
             return BindingData(
                 parent: tilingParent,
                 adaptiveWeight: WEIGHT_AUTO,
-                index: mruWindow.ownIndex.orDie() + 1,
+                index: mruIndex + 1,
             )
         }
         return BindingData(parent: root, adaptiveWeight: WEIGHT_AUTO, index: index)
@@ -36,22 +31,19 @@ func unbindAndGetBindingDataForNewTilingWindow(
 
     return bindingDataBySplittingDwindleTarget(
         root: root,
-        targetWindow: mruWindow,
-        tilingParent: tilingParent,
+        targetNode: tilingParent.children[targetIndex],
         orientation: orientation,
         newWindowGoesFirst: index == 0,
     )
 }
 
-/// Hyprland-style Dwindle insertion for a tiled window dropped with the mouse.
-/// The window under the pointer is split, and the pointer's position determines
-/// which side receives the dropped window.
+// Split the window under the pointer; the pointer position selects the side.
 @MainActor
 func unbindAndGetBindingDataForDwindleDrop(
     _ workspace: Workspace,
     window: Window,
     targetWindow: Window?,
-    dropPoint: CGPoint,
+    dropPoint: Point,
 ) -> BindingData {
     if window.isBound {
         window.unbindFromParent()
@@ -62,7 +54,7 @@ func unbindAndGetBindingDataForDwindleDrop(
           let targetWindow,
           targetWindow != window,
           targetWindow.nodeWorkspace == workspace,
-          let tilingParent = targetWindow.parent as? TilingContainer
+          let (tilingParent, targetIndex) = targetWindow.nearestAliveTilingParent()
     else {
         return BindingData(parent: root, adaptiveWeight: WEIGHT_AUTO, index: INDEX_BIND_LAST)
     }
@@ -73,8 +65,7 @@ func unbindAndGetBindingDataForDwindleDrop(
 
     return bindingDataBySplittingDwindleTarget(
         root: root,
-        targetWindow: targetWindow,
-        tilingParent: tilingParent,
+        targetNode: tilingParent.children[targetIndex],
         orientation: orientation,
         newWindowGoesFirst: newWindowGoesFirst,
     )
@@ -83,14 +74,13 @@ func unbindAndGetBindingDataForDwindleDrop(
 @MainActor
 private func bindingDataBySplittingDwindleTarget(
     root: TilingContainer,
-    targetWindow: Window,
-    tilingParent: TilingContainer,
+    targetNode: TreeNode,
     orientation: Orientation,
     newWindowGoesFirst: Bool,
 ) -> BindingData {
     // Avoid an unnecessary wrapper for the first split. Keeping the marker on
     // the root also lets subsequent insertions identify the workspace layout.
-    if tilingParent === root && root.children.count == 1 {
+    if targetNode.parent === root && root.inhabitedChildren.count == 1 {
         root.changeOrientation(orientation)
         return BindingData(
             parent: root,
@@ -99,7 +89,7 @@ private func bindingDataBySplittingDwindleTarget(
         )
     }
 
-    let previousBinding = targetWindow.unbindFromParent()
+    let previousBinding = targetNode.unbindFromParent()
     let split = TilingContainer(
         parent: previousBinding.parent,
         adaptiveWeight: previousBinding.adaptiveWeight,
@@ -107,7 +97,7 @@ private func bindingDataBySplittingDwindleTarget(
         .tiles,
         index: previousBinding.index,
     )
-    targetWindow.bind(
+    targetNode.bind(
         to: split,
         adaptiveWeight: WEIGHT_AUTO,
         index: newWindowGoesFirst ? INDEX_BIND_LAST : 0,
@@ -126,18 +116,16 @@ private func preferredDwindleOrientation(for window: Window, in workspace: Works
     }
 
     guard let parent = window.parent as? TilingContainer else {
-        let rect = workspace.workspaceMonitor.visibleRectPaddedByOuterGaps
+        let rect = workspace.workspaceMonitorInfo.visibleRectPaddedByOuterGaps
         return rect.width > rect.height ? .h : .v
     }
 
-    // During startup the tree is built before its first layout pass. A leaf
-    // created by the previous binary split occupies half of its parent, so the
-    // opposite orientation is the best deterministic approximation.
+    // Before the first layout pass, approximate the leaf as half of its parent.
     if parent.children.count > 1 {
         return parent.orientation.opposite
     }
 
-    let rect = parent.lastAppliedLayoutVirtualRect ?? workspace.workspaceMonitor.visibleRectPaddedByOuterGaps
+    let rect = parent.lastAppliedLayoutVirtualRect ?? workspace.workspaceMonitorInfo.visibleRectPaddedByOuterGaps
     return rect.width > rect.height ? .h : .v
 }
 
@@ -146,10 +134,18 @@ private func preferredDwindleRect(for window: Window, in workspace: Workspace) -
     window.lastAppliedLayoutVirtualRect
         ?? window.lastAppliedLayoutPhysicalRect
         ?? (window.parent as? TilingContainer)?.lastAppliedLayoutVirtualRect
-        ?? workspace.workspaceMonitor.visibleRectPaddedByOuterGaps
+        ?? workspace.workspaceMonitorInfo.visibleRectPaddedByOuterGaps
 }
 
 extension TilingContainer {
+    fileprivate var mostRecentDwindleWindow: Window? {
+        switch mostRecentInhabitedChild?.tilingTreeNodeCasesOrDie() {
+            case .window(let window): window
+            case .tilingContainer(let container): container.mostRecentDwindleWindow
+            case nil: nil
+        }
+    }
+
     /// Rebuilds an existing root as the same binary spiral produced by opening
     /// the windows one at a time in dwindle layout.
     @MainActor
@@ -158,7 +154,7 @@ extension TilingContainer {
 
         let windows = allLeafWindowsRecursive
         let previousMru = mostRecentWindowRecursive
-        for window in windows where window.isBound {
+        for window in windows {
             window.unbindFromParent()
         }
         for child in children {
@@ -182,7 +178,7 @@ extension TilingContainer {
 
         let windows = allLeafWindowsRecursive
         let previousMru = mostRecentWindowRecursive
-        for window in windows where window.isBound {
+        for window in windows {
             window.unbindFromParent()
         }
         for child in children {

@@ -1,17 +1,20 @@
 @testable import AppBundle
-import XCTest
+import AppKit
+import Common
+import Testing
 
 @MainActor
-final class MonitorInfoTest: XCTestCase {
-    override func setUp() async throws { setUpWorkspacesForTests() }
+@Suite(.serializedGlobally)
+struct MonitorInfoTest {
+    init() { setUpWorkspacesForTests() }
 
-    func testActiveWorkspaceFallsBackForStaleMonitorSnapshot() {
-        let visibleWorkspace = focus.workspace
+    @Test func testVisibleWorkspaceFallsBackForStaleMonitorSnapshot() {
+        let visibleWorkspace = globalFocus.workspace
         let staleMonitor = TestMonitorInfo(
-            rect: Rect(topLeftX: 10_000, topLeftY: 0, width: 1920, height: 1080),
+            rect: Rect(topLeftX: 10000, topLeftY: 0, width: 1920, height: 1080),
         )
 
-        assertEquals(staleMonitor.activeWorkspace, visibleWorkspace)
+        assertEquals(staleMonitor.visibleWorkspace, visibleWorkspace)
     }
 }
 

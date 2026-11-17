@@ -1,14 +1,16 @@
 @testable import AppBundle
-import XCTest
+import Common
+import Testing
 
 @MainActor
-final class DwindleLayoutTest: XCTestCase {
-    override func setUp() async throws {
+@Suite(.serializedGlobally)
+struct DwindleLayoutTest {
+    init() {
         setUpWorkspacesForTests()
         config.defaultRootContainerLayout = .dwindle
     }
 
-    func testNewWindowsRecursivelySplitMostRecentWindow() {
+    @Test func testNewWindowsRecursivelySplitMostRecentWindow() {
         let workspace = Workspace.get(byName: name)
         let window1 = newDwindleWindow(id: 1, in: workspace)
         _ = newDwindleWindow(id: 2, in: workspace)
@@ -29,7 +31,7 @@ final class DwindleLayoutTest: XCTestCase {
         assertEquals(window1.nodeWorkspace, workspace)
     }
 
-    func testSplitOrientationUsesTargetGeometry() {
+    @Test func testSplitOrientationUsesTargetGeometry() {
         let workspace = Workspace.get(byName: name)
         let window1 = newDwindleWindow(id: 1, in: workspace)
         window1.lastAppliedLayoutVirtualRect = Rect(topLeftX: 0, topLeftY: 0, width: 400, height: 800)
@@ -42,7 +44,7 @@ final class DwindleLayoutTest: XCTestCase {
         )
     }
 
-    func testLayoutCommandRebuildsExistingTreeAsDwindle() async {
+    @Test func testLayoutCommandRebuildsExistingTreeAsDwindle() async {
         config.defaultRootContainerLayout = .tiles
         let workspace = Workspace.get(byName: name)
         workspace.rootTilingContainer.apply {
@@ -64,7 +66,7 @@ final class DwindleLayoutTest: XCTestCase {
         )
     }
 
-    func testNormalizationKeepsDwindleOnRoot() {
+    @Test func testNormalizationKeepsDwindleOnRoot() {
         config.enableNormalizationFlattenContainers = true
         let workspace = Workspace.get(byName: name)
         let window1 = newDwindleWindow(id: 1, in: workspace)
@@ -81,7 +83,7 @@ final class DwindleLayoutTest: XCTestCase {
         )
     }
 
-    func testSwitchingBackToTilesFlattensDwindleTree() async {
+    @Test func testSwitchingBackToTilesFlattensDwindleTree() async {
         let workspace = Workspace.get(byName: name)
         _ = newDwindleWindow(id: 1, in: workspace)
         _ = newDwindleWindow(id: 2, in: workspace)
@@ -97,7 +99,7 @@ final class DwindleLayoutTest: XCTestCase {
         )
     }
 
-    func testMoveToWorkspaceUsesDwindleInsertion() {
+    @Test func testMoveToWorkspaceUsesDwindleInsertion() {
         let targetWorkspace = Workspace.get(byName: "target")
         _ = newDwindleWindow(id: 1, in: targetWorkspace)
         _ = newDwindleWindow(id: 2, in: targetWorkspace)
@@ -123,7 +125,7 @@ final class DwindleLayoutTest: XCTestCase {
         )
     }
 
-    func testMouseMoveToWorkspaceSplitsWindowUnderPointer() {
+    @Test func testMouseMoveToWorkspaceSplitsWindowUnderPointer() {
         let targetWorkspace = Workspace.get(byName: "target")
         _ = newDwindleWindow(id: 1, in: targetWorkspace)
         let targetWindow = newDwindleWindow(id: 2, in: targetWorkspace)
@@ -135,7 +137,7 @@ final class DwindleLayoutTest: XCTestCase {
         moveTilingWindowToWorkspace(
             movedWindow,
             targetWorkspace,
-            CGPoint(x: 1100, y: 250),
+            Point(x: 1100, y: 250),
             targetWindow,
         )
 
@@ -149,7 +151,7 @@ final class DwindleLayoutTest: XCTestCase {
         )
     }
 
-    func testMouseMoveToWorkspaceUsesClosestWindowWhenDroppedInGap() {
+    @Test func testMouseMoveToWorkspaceUsesClosestWindowWhenDroppedInGap() {
         let targetWorkspace = Workspace.get(byName: "target")
         let window1 = newDwindleWindow(id: 1, in: targetWorkspace)
         let window2 = newDwindleWindow(id: 2, in: targetWorkspace)
@@ -160,7 +162,7 @@ final class DwindleLayoutTest: XCTestCase {
 
         let sourceWorkspace = Workspace.get(byName: "source")
         let movedWindow = TestWindow.new(id: 3, parent: sourceWorkspace.rootTilingContainer)
-        moveTilingWindowToWorkspace(movedWindow, targetWorkspace, CGPoint(x: 505, y: 750))
+        moveTilingWindowToWorkspace(movedWindow, targetWorkspace, Point(x: 505, y: 750))
 
         assertEquals(
             targetWorkspace.rootTilingContainer.layoutDescription,
@@ -171,7 +173,7 @@ final class DwindleLayoutTest: XCTestCase {
         )
     }
 
-    func testToggleSplitChangesOnlyFocusedWindowsImmediateParent() async {
+    @Test func testToggleSplitChangesOnlyFocusedWindowsImmediateParent() async {
         config.enableNormalizationOppositeOrientationForNestedContainers = true
         let workspace = Workspace.get(byName: name)
         _ = newDwindleWindow(id: 1, in: workspace)
@@ -195,7 +197,7 @@ final class DwindleLayoutTest: XCTestCase {
         )
     }
 
-    func testToggleSplitChangesRootSplit() async {
+    @Test func testToggleSplitChangesRootSplit() async {
         let workspace = Workspace.get(byName: name)
         let window1 = newDwindleWindow(id: 1, in: workspace)
         _ = newDwindleWindow(id: 2, in: workspace)
@@ -208,7 +210,7 @@ final class DwindleLayoutTest: XCTestCase {
         assertEquals(workspace.rootTilingContainer.layout, .dwindle)
     }
 
-    func testToggleSplitFailsWithoutSplit() async {
+    @Test func testToggleSplitFailsWithoutSplit() async {
         let workspace = Workspace.get(byName: name)
         let window = newDwindleWindow(id: 1, in: workspace)
         assertTrue(window.focusWindow())
@@ -219,7 +221,7 @@ final class DwindleLayoutTest: XCTestCase {
         assertEquals(result.stderr, ["The focused window has no dwindle split to toggle"])
     }
 
-    func testToggleSplitFailsOutsideDwindle() async {
+    @Test func testToggleSplitFailsOutsideDwindle() async {
         config.defaultRootContainerLayout = .tiles
         let workspace = Workspace.get(byName: name)
         let window = TestWindow.new(id: 1, parent: workspace.rootTilingContainer)
@@ -231,7 +233,57 @@ final class DwindleLayoutTest: XCTestCase {
         assertEquals(result.stderr, ["toggle-split is only available in dwindle layout"])
     }
 
-    private func newDwindleWindow(id: UInt32, in workspace: Workspace) -> TestWindow {
+    @Test func testInsertionPreservesInactiveNativeTabContainer() {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        _ = newDwindleWindow(id: 1, in: workspace)
+        let tabGroup = TilingContainer.newVTiles(parent: root, adaptiveWeight: 1)
+        TestWindow.new(id: 2, parent: tabGroup)
+        TestWindow.new(id: 3, parent: tabGroup).lifeStatus = .dead
+        tabGroup.lifeStatus = .mustBeFlattened
+
+        let window = newDwindleWindow(id: 4, in: workspace)
+
+        assertEquals(window.parent?.children, [tabGroup, window])
+        assertEquals(window.parent?.parent, root)
+        assertEquals(tabGroup.layoutDescription, .v_tiles([.window(2), .window(3)]))
+    }
+
+    @Test func testToggleSplitSkipsInactiveNativeTabContainer() async {
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        _ = newDwindleWindow(id: 1, in: workspace)
+        let tabGroup = TilingContainer.newVTiles(parent: root, adaptiveWeight: 1)
+        let window = TestWindow.new(id: 2, parent: tabGroup)
+        TestWindow.new(id: 3, parent: tabGroup).lifeStatus = .dead
+        tabGroup.lifeStatus = .mustBeFlattened
+        assertTrue(window.focusWindow())
+
+        let result = await parseCommand("layout toggle-split").cmdOrDie.run(.defaultEnv, .emptyStdin)
+
+        assertEquals(result.exitCode.rawValue, 0)
+        assertEquals(root.orientation, .v)
+        assertEquals(tabGroup.orientation, .v)
+    }
+
+    @Test func testNormalizationPromotesNativeTabContainerWithoutLosingDwindle() {
+        config.enableNormalizationFlattenContainers = true
+        let workspace = Workspace.get(byName: name)
+        let root = workspace.rootTilingContainer
+        let tabGroup = TilingContainer.newVTiles(parent: root, adaptiveWeight: 1)
+        TestWindow.new(id: 1, parent: tabGroup)
+        TestWindow.new(id: 2, parent: tabGroup).lifeStatus = .dead
+        tabGroup.lifeStatus = .mustBeFlattened
+
+        workspace.normalizeContainers()
+
+        assertEquals(root.layout, .dwindle)
+        assertEquals(root.orientation, .v)
+        assertEquals(root.lifeStatus, .alive)
+        assertEquals(root.layoutDescription, .dwindle([.window(1), .window(2)]))
+    }
+
+    private func newDwindleWindow(id: OpaqueWindowId, in workspace: Workspace) -> TestWindow {
         let data = unbindAndGetBindingDataForNewTilingWindow(workspace, window: nil)
         return TestWindow.new(id: id, parent: data.parent, adaptiveWeight: data.adaptiveWeight)
     }
