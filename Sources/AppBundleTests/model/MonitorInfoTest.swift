@@ -16,6 +16,21 @@ struct MonitorInfoTest {
 
         assertEquals(staleMonitor.visibleWorkspace, visibleWorkspace)
     }
+
+    @Test func testGeometryRefreshesWhenDisplaySizeChangesAtSameOrigin() {
+        let workspace = globalFocus.workspace
+        let monitor = workspace.nodeMonitorInfo.orDie().toMonitorOrRearrangeMonitors()
+        let resizedMonitor = TestMonitorInfo(
+            rect: Rect(topLeftX: 0, topLeftY: 0, width: 1728, height: 1117),
+        )
+        defer { gcMonitors() }
+
+        gcMonitors([resizedMonitor])
+
+        assertTrue(workspace.nodeMonitorInfo.orDie().toMonitorOrRearrangeMonitors() === monitor)
+        assertEquals(workspace.workspaceMonitorInfo.rect.width, 1728)
+        assertEquals(workspace.rootTilingContainer.hWeight, 1728)
+    }
 }
 
 private struct TestMonitorInfo: MonitorInfo {
